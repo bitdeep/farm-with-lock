@@ -1,7 +1,17 @@
-# Farm with lock period
+# Main use case
+
+This contract allow admin to setup any amount of pools with different lock periods of reward and deposit.
+
+This means, that user can choose different pools with different lock-X-reward combination.
+
+The contract allow admin to apply fee on deposit/withdraw/reward in any combination.
+
+# Techinical aspects
 
 This contract allows users to deposit an arbitrary amount of assets for a certain period of time.
+
 The main feature of this contract is the ability to deposit and farm the same asset on various pools with different lock periods.
+
 The contract is designed in a way that the asset of one pool does not interface on reward calculation of other pools.
 
 # Features
