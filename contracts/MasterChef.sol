@@ -34,9 +34,8 @@ contract MasterChef is Ownable, ReentrancyGuard {
         uint256 lastRewardBlock;
         uint256 accTokenPerShare;
         uint16 taxWithdraw;
-        uint16 taxWithdrawBeforeLock;
         uint256 withdrawLockPeriod;
-        uint256 lock;
+        uint256 rewardLockPeriod;
         uint16 depositFee;
         uint16 harvestFee;
     }
@@ -108,17 +107,15 @@ contract MasterChef is Ownable, ReentrancyGuard {
         uint256 _allocPoint,
         address _lpToken,
         uint16 _taxWithdraw,
-        uint16 _taxWithdrawBeforeLock,
         uint256 _withdrawLockPeriod,
-        uint256 _lock,
+        uint256 _rewardLockPeriod,
         uint16 _depositFee,
         bool _withUpdate,
         uint16 _harvestFee
     ) external onlyOwner {
         require(_depositFee <= 1000, "err1");
         require(_taxWithdraw <= 1000, "err2");
-        require(_taxWithdrawBeforeLock <= 2500, "err3");
-        require(_withdrawLockPeriod <= 30 days, "err4");
+        require(_withdrawLockPeriod <= 240 days, "err4");
         require(poolExists[_lpToken] == false, "err5");
 
         IERC20(_lpToken).balanceOf(address(this));
@@ -138,9 +135,8 @@ contract MasterChef is Ownable, ReentrancyGuard {
             lastRewardBlock : lastRewardBlock,
             accTokenPerShare : 0,
             taxWithdraw : _taxWithdraw,
-            taxWithdrawBeforeLock : _taxWithdrawBeforeLock,
             withdrawLockPeriod : _withdrawLockPeriod,
-            lock : _lock,
+            rewardLockPeriod : _rewardLockPeriod,
             depositFee : _depositFee,
             harvestFee : _harvestFee
             })
@@ -150,19 +146,16 @@ contract MasterChef is Ownable, ReentrancyGuard {
 
     function setupLocks(uint256 _pid,
         uint16 _taxWithdraw,
-        uint16 _taxWithdrawBeforeLock,
         uint256 _withdrawLockPeriod,
-        uint256 _lock,
+        uint256 _rewardLockPeriod,
         uint16 _depositFee,
         uint16 _harvestFee) external onlyOwner validatePoolByPid(_pid) {
         require(_depositFee <= 1000, "err1");
         require(_taxWithdraw <= 1000, "err2");
-        require(_taxWithdrawBeforeLock <= 2500, "err3");
-        require(_withdrawLockPeriod <= 30 days, "err4");
+        require(_withdrawLockPeriod <= 240 days, "err4");
         poolInfo[_pid].taxWithdraw = _taxWithdraw;
-        poolInfo[_pid].taxWithdrawBeforeLock = _taxWithdrawBeforeLock;
         poolInfo[_pid].withdrawLockPeriod = _withdrawLockPeriod;
-        poolInfo[_pid].lock = _lock;
+        poolInfo[_pid].rewardLockPeriod = _rewardLockPeriod;
         poolInfo[_pid].depositFee = _depositFee;
         poolInfo[_pid].harvestFee = _harvestFee;
     }
@@ -271,8 +264,8 @@ contract MasterChef is Ownable, ReentrancyGuard {
                 emit Deposit(recipient, _pid, _amount);
             }
             user.lastDepositTime = block.timestamp;
-            if (user.nextHarvestUntil == 0 && pool.lock > 0) {
-                user.nextHarvestUntil = block.timestamp.add(pool.lock);
+            if (user.nextHarvestUntil == 0 && pool.rewardLockPeriod > 0) {
+                user.nextHarvestUntil = block.timestamp.add(pool.rewardLockPeriod);
             }
         }
         user.rewardDebt = user.amount.mul(pool.accTokenPerShare).div(1e12);
@@ -291,16 +284,11 @@ contract MasterChef is Ownable, ReentrancyGuard {
         _payRewardByPid(_pid, msg.sender);
         if (_amount > 0) {
             if (pool.withdrawLockPeriod > 0) {
-                uint256 tax = 0;
-                if (block.timestamp < user.lastDepositTime + pool.withdrawLockPeriod) {
-                    if (pool.taxWithdrawBeforeLock > 0) {
-                        tax = _amount.mul(pool.taxWithdrawBeforeLock).div(10000);
-                    }
-                } else {
-                    if (pool.taxWithdraw > 0) {
-                        tax = _amount.mul(pool.taxWithdraw).div(10000);
-                    }
-                }
+                require(block.timestamp > user.lastDepositTime + pool.withdrawLockPeriod,
+                    "withdraw still locked");
+            }
+            if (pool.taxWithdraw > 0) {
+                uint256 tax = _amount.mul(pool.taxWithdraw).div(10000);
                 if (tax > 0) {
                     deposits[_pid] = deposits[_pid].sub(tax);
                     user.amount = user.amount.sub(tax);
@@ -396,7 +384,7 @@ contract MasterChef is Ownable, ReentrancyGuard {
                 safeTokenTransfer(recipient, totalRewards.sub(fee));
                 totalLockedUpRewards = totalLockedUpRewards.sub(user.rewardLockedUp);
                 user.rewardLockedUp = 0;
-                user.nextHarvestUntil = block.timestamp.add(pool.lock);
+                user.nextHarvestUntil = block.timestamp.add(pool.rewardLockPeriod);
             }
         } else {
             user.rewardLockedUp = user.rewardLockedUp.add(pending);
