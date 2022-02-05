@@ -6,7 +6,7 @@ This means, that user can choose different pools with different lock-X-reward co
 
 The contract allow admin to apply fee on deposit/withdraw/reward in any combination.
 
-# Techinical aspects
+# Technical aspects
 
 This contract allows users to deposit an arbitrary amount of assets for a certain period of time.
 
@@ -37,10 +37,10 @@ Admin call method addPool to create a stacking pool, with arguments:
 - withUpdate: update pool info (always true).
 - _harvestFee: tax to be applied when user harvest reward.
 
-# User workflow- user deposit aset
-
+# User workflow
+ 
 - User choose a pool in the interface.
 - User approve contract to transfer tokens.
 - User make a arbitrary deposit of tokens.
-- According to pool setup, user with to harvest reward.
-- According to pool setup, user with to harvest withdraw.
+- According to pool setup, user need to wait to harvest reward.
+- According to pool setup, user need to wait to withdraw.
